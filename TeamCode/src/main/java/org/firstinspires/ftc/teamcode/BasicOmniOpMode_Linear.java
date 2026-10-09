@@ -62,7 +62,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * Remove or comment out the @Disabled line to add this OpMode to the Driver Station OpMode list
  */
 
-@TeleOp(name="mecanum drive", group="Linear OpMode")
+@TeleOp(name="BasicOmniOpMode", group="Linear OpMode")
 public class BasicOmniOpMode_Linear extends LinearOpMode {
 
     // Declare OpMode members for each of the 4 motors.
@@ -71,6 +71,8 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
     private DcMotor backLeftDrive = null;
     private DcMotor frontRightDrive = null;
     private DcMotor backRightDrive = null;
+
+    private boolean toggleIntake = false;
 
     @Override
     public void runOpMode() {
@@ -109,9 +111,15 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             double max;
 
             // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
-            double axial   = -gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
-            double lateral =  gamepad1.left_stick_x;
+            double axial   = -gamepad1.left_stick_y + ((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0));  // Note: pushing stick forward gives negative value
+            double lateral =  gamepad1.left_stick_x + ((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0));
             double yaw     =  gamepad1.right_stick_x;
+
+            if (gamepad1.squareWasPressed()) {
+                toggleIntake = !toggleIntake;
+                telemetry.addData("toggleIntake", toggleIntake);
+                telemetry.update();
+            }
 
             // Combine the joystick requests for each axis-motion to determine each wheel's power.
             // Set up a variable for each drive wheel to save the power level for telemetry.
