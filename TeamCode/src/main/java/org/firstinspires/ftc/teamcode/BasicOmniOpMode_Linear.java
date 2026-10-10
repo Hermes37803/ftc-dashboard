@@ -73,7 +73,8 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
     private DcMotor backRightDrive = null;
 
     private boolean toggleIntake = false;
-
+    private double lastYaw = 0.0;
+    private int brakeCooldown = 0;
     @Override
     public void runOpMode() {
 
@@ -111,9 +112,21 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             double max;
 
             // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
-            double axial   = -gamepad1.left_stick_y + ((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0));  // Note: pushing stick forward gives negative value
-            double lateral =  gamepad1.left_stick_x + ((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0));
-            double yaw     =  gamepad1.right_stick_x;
+            double axial   = -((gamepad1.left_stick_y * 0.4) + ((gamepad1.left_stick_y * 0.6)*(gamepad1.left_stick_y * 0.6))) + ((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0));  // Note: pushing stick forward gives negative value
+            double lateral =  ((gamepad1.left_stick_x * 0.4) + ((gamepad1.left_stick_x * 0.6)*(gamepad1.left_stick_x * 0.6))) + ((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0));
+            double yaw     =  ((gamepad1.right_stick_x * 0.4) + ((gamepad1.right_stick_x * 0.6)*(gamepad1.right_stick_x * 0.6)));
+
+            //BRAKING SYSTEM
+            if (Math.abs(yaw) <= 0.05 && Math.abs(lastYaw) > 0.05) {
+                if (brakeCooldown == 0) {
+                    //BRAKE COOLDOWN IN FRAMES
+                    brakeCooldown = 5;
+                }
+            }
+            if (brakeCooldown > 0) {
+                brakeCooldown -= 1;
+                yaw = -lastYaw; //FIX THIS
+            }
 
             if (gamepad1.squareWasPressed()) {
                 toggleIntake = !toggleIntake;
@@ -121,7 +134,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
                 telemetry.update();
             }
 
-            // Combine the joystick requests for each axis-motion to determine each wheel's power.
+            // Combine the joys//tick requests for each axis-motion to determine each wheel's power.
             // Set up a variable for each drive wheel to save the power level for telemetry.
             double frontLeftPower  = axial + lateral + yaw;
             double frontRightPower = axial - lateral - yaw;
@@ -135,10 +148,10 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             max = Math.max(max, Math.abs(backRightPower));
 
             if (max > 1.0) {
-                frontLeftPower  /= max;
+                frontLeftPower /= max;
                 frontRightPower /= max;
-                backLeftPower   /= max;
-                backRightPower  /= max;
+                backLeftPower /= max;
+                backRightPower /= max;
             }
 
             // This is test code:
@@ -169,5 +182,8 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
             telemetry.update();
+
+            //UPDATE LASTYAW FOR NEXT FRAME
+            lastYaw = yaw;
         }
     }}
