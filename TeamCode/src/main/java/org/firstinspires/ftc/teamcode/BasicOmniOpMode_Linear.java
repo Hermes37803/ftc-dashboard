@@ -74,6 +74,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
 
     private boolean toggleIntake = false;
     private double lastYaw = 0.0;
+    private int yawDirection = 0;
     private int brakeCooldown = 0;
     @Override
     public void runOpMode() {
@@ -112,20 +113,30 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             double max;
 
             // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
-            double axial   = -((gamepad1.left_stick_y * 0.4) + ((gamepad1.left_stick_y * 0.6)*(gamepad1.left_stick_y * 0.6))) + ((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0));  // Note: pushing stick forward gives negative value
-            double lateral =  ((gamepad1.left_stick_x * 0.4) + ((gamepad1.left_stick_x * 0.6)*(gamepad1.left_stick_x * 0.6))) + ((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0));
             double yaw     =  ((gamepad1.right_stick_x * 0.4) + ((gamepad1.right_stick_x * 0.6)*(gamepad1.right_stick_x * 0.6)));
+            double axial   = -((gamepad1.left_stick_y * 0.4) + ((gamepad1.left_stick_y * 0.6)*(gamepad1.left_stick_y * 0.6))) + (((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));  // Note: pushing stick forward gives negative value
+            double lateral =  ((gamepad1.left_stick_x * 0.4) + ((gamepad1.left_stick_x * 0.6)*(gamepad1.left_stick_x * 0.6))) + (((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));
 
             //BRAKING SYSTEM
             if (Math.abs(yaw) <= 0.05 && Math.abs(lastYaw) > 0.05) {
                 if (brakeCooldown == 0) {
                     //BRAKE COOLDOWN IN FRAMES
-                    brakeCooldown = 5;
+                    brakeCooldown = 10;
                 }
+            }
+            if (Math.abs(yaw) > 0.05) {
+                if (yaw > 0.05) {
+                    yawDirection = 1;
+                } else if (yawDirection <= 0.05 && yawDirection >= 0.05) {
+                    yawDirection = 0;
+                } else {
+                    yawDirection = -1;
+                }
+                brakeCooldown = 0;
             }
             if (brakeCooldown > 0) {
                 brakeCooldown -= 1;
-                yaw = -lastYaw; //FIX THIS
+                yaw = yawDirection - (brakeCooldown/10.0);
             }
 
             if (gamepad1.squareWasPressed()) {
