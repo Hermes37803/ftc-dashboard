@@ -71,11 +71,13 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
     private DcMotor backLeftDrive = null;
     private DcMotor frontRightDrive = null;
     private DcMotor backRightDrive = null;
+    private DcMotor intakeMotor = null;
 
     private boolean toggleIntake = false;
     private double lastYaw = 0.0;
     private int yawDirection = 0;
     private int brakeCooldown = 0;
+    private double turnDeadzone = 0.0;
     @Override
     public void runOpMode() {
 
@@ -85,6 +87,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
         backLeftDrive = hardwareMap.get(DcMotor.class, "back_left_drive");
         frontRightDrive = hardwareMap.get(DcMotor.class, "front_right_drive");
         backRightDrive = hardwareMap.get(DcMotor.class, "back_right_drive");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
 
         // ########################################################################################
         // !!!            IMPORTANT Drive Information. Test your motor directions.            !!!!!
@@ -100,6 +103,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
         backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
         frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
         backRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        intakeMotor.setDirection(DcMotor.Direction.FORWARD);
 
         // Wait for the game to start (driver presses START)
         telemetry.addData("Status", "Initialized");
@@ -113,34 +117,54 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             double max;
 
             // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
-            double yaw     =  ((gamepad1.right_stick_x * 0.4) + ((gamepad1.right_stick_x * 0.6)*(gamepad1.right_stick_x * 0.6)));
-            double axial   = -((gamepad1.left_stick_y * 0.4) + ((gamepad1.left_stick_y * 0.6)*(gamepad1.left_stick_y * 0.6))) + (((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));  // Note: pushing stick forward gives negative value
-            double lateral =  ((gamepad1.left_stick_x * 0.4) + ((gamepad1.left_stick_x * 0.6)*(gamepad1.left_stick_x * 0.6))) + (((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));
+            double yaw     =  ((gamepad1.right_stick_x * 0.4) + ((gamepad1.right_stick_x * 0.6)*Math.abs(gamepad1.right_stick_x * 0.6)));
+            double axial   = -(((gamepad1.left_stick_y * 0.4) + ((gamepad1.left_stick_y * 0.6)*Math.abs(gamepad1.left_stick_y * 0.6))) / 1.5) + (((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));  // Note: pushing stick forward gives negative value
+            double lateral =  (((gamepad1.left_stick_x * 0.4) + ((gamepad1.left_stick_x * 0.6)*Math.abs(gamepad1.left_stick_x * 0.6))) / 1.5) + (((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));
 
-            //BRAKING SYSTEM
-            if (Math.abs(yaw) <= 0.05 && Math.abs(lastYaw) > 0.05) {
+            if (Math.abs(yaw) > 0.01) {
+                //WHEN TURNING, MOVEMENT SHOULD BE MAXED AT 0.5
+                if (axial > 0.5) {axial = Math.max(0.5, axial);}
+                if (lateral > 0.5) {lateral = Math.max(0.5, lateral);}
+                if (axial < 0.5) {axial = Math.min(0.5, axial);}
+                if (lateral < 0.5) {lateral = Math.min(0.5, lateral);}
+            }
+
+            /*BRAKING SYSTEM
+            if (Math.abs(yaw) <= turnDeadzone && Math.abs(lastYaw) > turnDeadzone) {
                 if (brakeCooldown == 0) {
                     //BRAKE COOLDOWN IN FRAMES
-                    brakeCooldown = 10;
+                    brakeCooldown += 1;
+                    brakeCooldown = Math.max(10,brakeCooldown);
                 }
             }
-            if (Math.abs(yaw) > 0.05) {
-                if (yaw > 0.05) {
+            if (Math.abs(yaw) > turnDeadzone) {
+                //NOT NEUTRAL
+                if (yaw > turnDeadzone) {
+                    //TURN RIGHT
                     yawDirection = 1;
-                } else if (yawDirection <= 0.05 && yawDirection >= 0.05) {
-                    yawDirection = 0;
-                } else {
+                } else if (yaw <= -turnDeadzone) {
+                    //TURN LEFT
                     yawDirection = -1;
                 }
+                //DONT DO THE BRAKE COOLDOWN BECAUSE STICK ISNT NEUTRAL
                 brakeCooldown = 0;
             }
-            if (brakeCooldown > 0) {
+
+            if (brakeCooldown > 0 && Math.abs(yaw) < turnDeadzone) {
                 brakeCooldown -= 1;
-                yaw = yawDirection - (brakeCooldown/10.0);
+                yaw = -yawDirection;
+            } else {
+                yaw = 0;
             }
+            */
 
             if (gamepad1.squareWasPressed()) {
                 toggleIntake = !toggleIntake;
+                if (toggleIntake) {
+                    intakeMotor.setPower(-1.0);
+                }   else {
+                    intakeMotor.setPower(0.0);
+                }
                 telemetry.addData("toggleIntake", toggleIntake);
                 telemetry.update();
             }
