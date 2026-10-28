@@ -129,7 +129,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
                 if (lateral < 0.5) {lateral = Math.min(0.5, lateral);}
             }
 
-            /*BRAKING SYSTEM
+            /*EVIL BRAKING SYSTEM
             if (Math.abs(yaw) <= turnDeadzone && Math.abs(lastYaw) > turnDeadzone) {
                 if (brakeCooldown == 0) {
                     //BRAKE COOLDOWN IN FRAMES
@@ -167,6 +167,11 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
                 }
                 telemetry.addData("toggleIntake", toggleIntake);
                 telemetry.update();
+            }
+
+            //EMERGENCY STOP
+            if (gamepad1.circleWasPressed()) {
+                return;
             }
 
             // Combine the joys//tick requests for each axis-motion to determine each wheel's power.
