@@ -158,7 +158,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             }
             */
 
-            if (gamepad1.squareWasPressed()) {
+            if (gamepad2.squareWasPressed()) {
                 toggleIntake = !toggleIntake;
                 if (toggleIntake) {
                     intakeMotor.setPower(-1.0);
@@ -167,11 +167,6 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
                 }
                 telemetry.addData("toggleIntake", toggleIntake);
                 telemetry.update();
-            }
-
-            //EMERGENCY STOP
-            if (gamepad1.circleWasPressed()) {
-                return;
             }
 
             // Combine the joys//tick requests for each axis-motion to determine each wheel's power.
@@ -216,6 +211,15 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             frontRightDrive.setPower(frontRightPower);
             backLeftDrive.setPower(backLeftPower);
             backRightDrive.setPower(backRightPower);
+
+            //EMERGENCY STOP
+            if (gamepad2.circleWasPressed()) {
+                frontLeftDrive.setPower(0.0);
+                frontRightDrive.setPower(0.0);
+                backLeftDrive.setPower(0.0);
+                backRightDrive.setPower(0.0);
+                intakeMotor.setPower(0.0);
+            }
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
