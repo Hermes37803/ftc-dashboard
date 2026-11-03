@@ -52,7 +52,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  *
  * 1) Axial:    Driving forward and backward               Left-joystick Forward/Backward
  * 2) Lateral:  Strafing right and left                     Left-joystick Right and Left
- * 3) Yaw:      Rotating Clockwise and counter clockwise    Right-joystick Right and Left
+ * 3) Yaw:      Rotating Clockwise and counterclockwise    Right-joystick Right and Left
  *
  * This code is written assuming that the right-side motors need to be reversed for the robot to drive forward.
  * When you first test your robot, if it moves backward when you push the left stick forward, then you must flip
@@ -74,10 +74,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
     private DcMotor intakeMotor = null;
 
     private boolean toggleIntake = false;
-    private double lastYaw = 0.0;
     private int yawDirection = 0;
-    private int brakeCooldown = 0;
-    private double turnDeadzone = 0.0;
     @Override
     public void runOpMode() {
 
@@ -129,36 +126,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
                 if (lateral < 0.5) {lateral = Math.min(0.5, lateral);}
             }
 
-            /*EVIL BRAKING SYSTEM
-            if (Math.abs(yaw) <= turnDeadzone && Math.abs(lastYaw) > turnDeadzone) {
-                if (brakeCooldown == 0) {
-                    //BRAKE COOLDOWN IN FRAMES
-                    brakeCooldown += 1;
-                    brakeCooldown = Math.max(10,brakeCooldown);
-                }
-            }
-            if (Math.abs(yaw) > turnDeadzone) {
-                //NOT NEUTRAL
-                if (yaw > turnDeadzone) {
-                    //TURN RIGHT
-                    yawDirection = 1;
-                } else if (yaw <= -turnDeadzone) {
-                    //TURN LEFT
-                    yawDirection = -1;
-                }
-                //DONT DO THE BRAKE COOLDOWN BECAUSE STICK ISNT NEUTRAL
-                brakeCooldown = 0;
-            }
-
-            if (brakeCooldown > 0 && Math.abs(yaw) < turnDeadzone) {
-                brakeCooldown -= 1;
-                yaw = -yawDirection;
-            } else {
-                yaw = 0;
-            }
-            */
-
-            if (gamepad2.squareWasPressed()) {
+            if (gamepad1.squareWasPressed()) {
                 toggleIntake = !toggleIntake;
                 if (toggleIntake) {
                     intakeMotor.setPower(-1.0);
@@ -213,7 +181,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             backRightDrive.setPower(backRightPower);
 
             //EMERGENCY STOP
-            if (gamepad2.circleWasPressed()) {
+            if (gamepad1.circleWasPressed()) {
                 frontLeftDrive.setPower(0.0);
                 frontRightDrive.setPower(0.0);
                 backLeftDrive.setPower(0.0);
@@ -227,7 +195,5 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
             telemetry.update();
 
-            //UPDATE LASTYAW FOR NEXT FRAME
-            lastYaw = yaw;
         }
     }}
