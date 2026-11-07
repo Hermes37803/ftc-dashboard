@@ -5,12 +5,15 @@
 */
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.roadrunner.Vector2d;
 import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 /*
  * This OpMode illustrates how to use the SparkFun Qwiic Optical Tracking Odometry Sensor (OTOS)
@@ -22,54 +25,82 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
  *
  * See the sensor's product page: https://www.sparkfun.com/products/24904
  */
-@TeleOp(name = "Sensor: SparkFun OTOS", group = "Sensor")
+@Autonomous(name = "Sensor: SparkFun OTOS", group = "Sensor")
 
 public class SensorSparkFunOTOS extends LinearOpMode {
     // Create an instance of the sensor
     SparkFunOTOS myOtos;
 
+    //variables and whatnot
+    private ElapsedTime runtime = new ElapsedTime();
+    private DcMotor frontLeftDrive = null;
+    private DcMotor backLeftDrive = null;
+    private DcMotor frontRightDrive = null;
+    private DcMotor backRightDrive = null;
+    private DcMotor intakeMotor = null;
+    private boolean toggleIntake = false;
+
     @Override
     public void runOpMode() throws InterruptedException {
+
+        // Initialize the hardware variables. Note that the strings used here must correspond
+        // to the names assigned during the robot configuration step on the DS or RC devices.
+        frontLeftDrive = hardwareMap.get(DcMotor.class, "front_left_drive");
+        backLeftDrive = hardwareMap.get(DcMotor.class, "back_left_drive");
+        frontRightDrive = hardwareMap.get(DcMotor.class, "front_right_drive");
+        backRightDrive = hardwareMap.get(DcMotor.class, "back_right_drive");
+        intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
+
+        frontLeftDrive.setDirection(DcMotor.Direction.REVERSE);
+        backLeftDrive.setDirection(DcMotor.Direction.FORWARD);
+        frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
+        backRightDrive.setDirection(DcMotor.Direction.REVERSE);
+        intakeMotor.setDirection(DcMotor.Direction.FORWARD);
+
+        //STOP STINKY BAD FIRMWARE FROM OVERRIDING PID THINGY
+        frontLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeftDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRightDrive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+
+
         // Get a reference to the sensor
         myOtos = hardwareMap.get(SparkFunOTOS.class, "sensor_otos");
 
         // All the configuration for the OTOS is done in this helper method, check it out!
         configureOtos();
 
-        // Wait for the start button to be pressed
+        //Wait for start thingy
+        telemetry.addData("Status", "Initialized");
+        telemetry.update();
+
         waitForStart();
+        runtime.reset();
 
-        // Loop until the OpMode ends
-        while (opModeIsActive()) {
-            // Get the latest position, which includes the x and y coordinates, plus the
-            // heading angle
-            SparkFunOTOS.Pose2D pos = myOtos.getPosition();
-
-            // Reset the tracking if the user requests it
-            if (gamepad1.y) {
-                myOtos.resetTracking();
-            }
-
-            // Re-calibrate the IMU if the user requests it
-            if (gamepad1.x) {
-                myOtos.calibrateImu();
-            }
-
-            // Inform user of available controls
-            telemetry.addLine("Press Y (triangle) on Gamepad to reset tracking");
-            telemetry.addLine("Press X (square) on Gamepad to calibrate the IMU");
-            telemetry.addLine();
-
-            // Log the position to the telemetry
-            telemetry.addData("X coordinate", pos.x);
-            telemetry.addData("Y coordinate", pos.y);
-            telemetry.addData("Heading angle", pos.h);
-
-            // Update the telemetry on the driver station
-            telemetry.update();
-        }
+        moveWithPID(new Vector2d(10.0, 10.0), 45.0);
     }
 
+    private void doStuffWhileMoving() {
+        SparkFunOTOS.Pose2D pos = myOtos.getPosition();
+        // Reset the tracking if the user requests it
+        if (gamepad1.y) {
+            myOtos.resetTracking();
+        }
+
+        // Re-calibrate the IMU if the user requests it
+        if (gamepad1.x) {
+            myOtos.calibrateImu();
+        }
+        // Inform user of available controls
+        telemetry.addLine("Press Y (triangle) on Gamepad to reset tracking");
+        telemetry.addLine("Press X (square) on Gamepad to calibrate the IMU");
+        telemetry.addLine();
+
+        // Log the position to the telemetry
+        telemetry.addData("X coordinate", pos.x);
+        telemetry.addData("Y coordinate", pos.y);
+        telemetry.addData("Heading angle", pos.h);
+    }
     private void configureOtos() {
         telemetry.addLine("Configuring OTOS...");
         telemetry.update();
@@ -150,5 +181,86 @@ public class SensorSparkFunOTOS extends LinearOpMode {
         telemetry.addLine(String.format("OTOS Hardware Version: v%d.%d", hwVersion.major, hwVersion.minor));
         telemetry.addLine(String.format("OTOS Firmware Version: v%d.%d", fwVersion.major, fwVersion.minor));
         telemetry.update();
+    }
+
+    private void moveWithPID(Vector2d targetPos, double targetHeading) {
+        boolean finished = false;
+        double Kp = 0.08;
+        double Ki = 0.001;
+        double Kd = 0.01;
+
+        double Kp_heading = 0.04;
+
+        //math variables
+        Vector2d integralSum = new Vector2d(0.0,0.0);
+        Vector2d lastError = new Vector2d(0.0,0.0);
+        ElapsedTime timerPID = new ElapsedTime();
+
+
+        Vector2d errorDist;
+        double errorHeading = 0.0;
+        //move and stuff
+        while (opModeIsActive() && !finished) {
+            SparkFunOTOS.Pose2D currentPose = myOtos.getPosition();
+            errorDist = new Vector2d(targetPos.x - currentPose.x, targetPos.y - currentPose.y);
+            errorHeading = targetHeading - currentPose.h;
+
+            // get time
+            double dt = timerPID.seconds();
+            if (dt == 0) dt = 0.001; // no divide by 0
+
+            Vector2d derivativeDist = new Vector2d((errorDist.x - lastError.x) / dt, (errorDist.y - lastError.y) / dt);
+            integralSum = new Vector2d(integralSum.x + (errorDist.x * dt), integralSum.y + (errorDist.y * dt));
+
+            //math??? something important
+            Vector2d drivePower = new Vector2d((Kp * errorDist.x) + (Ki * integralSum.x), (Kp * errorDist.y) + (Ki * integralSum.y));
+            double steerCorrection = Kp_heading * errorHeading;
+            //more math
+            double frontLeftPower  = drivePower.x + drivePower.y + steerCorrection;
+            double frontRightPower = drivePower.x - drivePower.y - steerCorrection;
+            double backLeftPower   = drivePower.x - drivePower.y + steerCorrection;
+            double backRightPower  = drivePower.x + drivePower.y - steerCorrection;
+
+            //clamp it
+            double max;
+            max = Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower));
+            max = Math.max(max, Math.abs(backLeftPower));
+            max = Math.max(max, Math.abs(backRightPower));
+
+            if (max > 1.0) {
+                frontLeftPower /= max;
+                frontRightPower /= max;
+                backLeftPower /= max;
+                backRightPower /= max;
+            }
+
+            //go move do thing drive
+            double speedMult = 0.25;
+            frontLeftDrive.setPower(frontLeftPower * speedMult);
+            frontRightDrive.setPower(frontRightPower * speedMult);
+            backLeftDrive.setPower(backLeftPower * speedMult);
+            backRightDrive.setPower(backRightPower * speedMult);
+
+            //thingys for next loop
+            lastError = errorDist;
+            timerPID.reset();
+
+            // Do other stuff not in here
+            doStuffWhileMoving();
+            telemetry.addData("Target Position", targetPos);
+            telemetry.addData("Target Heading", targetHeading);
+            telemetry.addData("Distance to target position", errorDist);
+            telemetry.addData("Distance to target heading", errorHeading);
+            telemetry.update();
+
+            // STOP if close enough to place
+            if (errorDist.norm() < 0.5) {
+                frontLeftDrive.setPower(0);
+                frontRightDrive.setPower(0);
+                backLeftDrive.setPower(0);
+                backRightDrive.setPower(0);
+                return;
+            }
+        }
     }
 }
