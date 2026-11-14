@@ -32,6 +32,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 /*
@@ -67,14 +68,24 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
 
     // Declare OpMode members for each of the 4 motors.
     private ElapsedTime runtime = new ElapsedTime();
+    private ElapsedTime launcherTimer = new ElapsedTime();
     private DcMotor frontLeftDrive = null;
     private DcMotor backLeftDrive = null;
     private DcMotor frontRightDrive = null;
     private DcMotor backRightDrive = null;
     private DcMotor intakeMotor = null;
+    private DcMotor launcherMotor = null;
+    private Servo gateServo = null;
 
     private boolean toggleIntake = false;
+    private double intakePower = -0.5;
+    private boolean toggleLauncher = false;
+    private double launcherPower = 0.85;
+    private double gateWaitTime = 0.5;
     private int yawDirection = 0;
+    private double gateServoPosition = 0.0;
+    private boolean emergencyStop = false;
+
     @Override
     public void runOpMode() {
 
@@ -85,6 +96,8 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
         frontRightDrive = hardwareMap.get(DcMotor.class, "front_right_drive");
         backRightDrive = hardwareMap.get(DcMotor.class, "back_right_drive");
         intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
+        launcherMotor = hardwareMap.get(DcMotor.class, "launcher_motor");
+        gateServo = hardwareMap.get(Servo.class, "gate_servo");
 
         // ########################################################################################
         // !!!            IMPORTANT Drive Information. Test your motor directions.            !!!!!
@@ -101,6 +114,7 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
         frontRightDrive.setDirection(DcMotor.Direction.FORWARD);
         backRightDrive.setDirection(DcMotor.Direction.REVERSE);
         intakeMotor.setDirection(DcMotor.Direction.FORWARD);
+        launcherMotor.setDirection(DcMotor.Direction.FORWARD);
 
         // Wait for the game to start (driver presses START)
         telemetry.addData("Status", "Initialized");
@@ -114,35 +128,96 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             double max;
 
             // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
-            double yaw     =  ((gamepad1.right_stick_x * 0.4) + ((gamepad1.right_stick_x * 0.6)*Math.abs(gamepad1.right_stick_x * 0.6)));
-            double axial   = -(((gamepad1.left_stick_y * 0.4) + ((gamepad1.left_stick_y * 0.6)*Math.abs(gamepad1.left_stick_y * 0.6))) / 1.5) + (((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));  // Note: pushing stick forward gives negative value
-            double lateral =  (((gamepad1.left_stick_x * 0.4) + ((gamepad1.left_stick_x * 0.6)*Math.abs(gamepad1.left_stick_x * 0.6))) / 1.5) + (((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));
+            double yaw = ((gamepad1.right_stick_x * 0.4) + ((gamepad1.right_stick_x * 0.6) * Math.abs(gamepad1.right_stick_x * 0.6)));
+            double axial = -(((gamepad1.left_stick_y * 0.4) + ((gamepad1.left_stick_y * 0.6) * Math.abs(gamepad1.left_stick_y * 0.6))) / 1.5) + (((gamepad1.dpad_up ? 1 : 0) - (gamepad1.dpad_down ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));  // Note: pushing stick forward gives negative value
+            double lateral = (((gamepad1.left_stick_x * 0.4) + ((gamepad1.left_stick_x * 0.6) * Math.abs(gamepad1.left_stick_x * 0.6))) / 1.5) + (((gamepad1.dpad_right ? 1 : 0) - (gamepad1.dpad_left ? 1 : 0)) / (Math.abs(yawDirection) + 1.0));
 
             if (Math.abs(yaw) > 0.01) {
                 //WHEN TURNING, MOVEMENT SHOULD BE MAXED AT 0.5
-                if (axial > 0.5) {axial = Math.max(0.5, axial);}
-                if (lateral > 0.5) {lateral = Math.max(0.5, lateral);}
-                if (axial < 0.5) {axial = Math.min(0.5, axial);}
-                if (lateral < 0.5) {lateral = Math.min(0.5, lateral);}
+                if (axial > 0.5) {
+                    axial = Math.max(0.5, axial);
+                }
+                if (lateral > 0.5) {
+                    lateral = Math.max(0.5, lateral);
+                }
+                if (axial < 0.5) {
+                    axial = Math.min(0.5, axial);
+                }
+                if (lateral < 0.5) {
+                    lateral = Math.min(0.5, lateral);
+                }
             }
-
+            if (gamepad1.triangleWasPressed()) {
+                intakePower = -intakePower;
+            }
             if (gamepad1.squareWasPressed()) {
                 toggleIntake = !toggleIntake;
-                if (toggleIntake) {
-                    intakeMotor.setPower(-1.0);
-                }   else {
-                    intakeMotor.setPower(0.0);
-                }
+                intakePower = -0.5;
                 telemetry.addData("toggleIntake", toggleIntake);
-                telemetry.update();
+            }
+            if (toggleIntake) {
+                intakeMotor.setPower(intakePower);
+            } else {
+                intakeMotor.setPower(0.0);
             }
 
+            if (gamepad2.squareWasPressed()) {
+                toggleLauncher = !toggleLauncher;
+                launcherTimer.reset();
+                if (toggleLauncher) {
+                    gateServoPosition = 0.4;
+                } else {
+                    gateServoPosition = 0.0;
+                }
+            }
+            if ((launcherTimer.seconds() > gateWaitTime && toggleLauncher) || (!toggleLauncher)) {
+                gateServo.setPosition(gateServoPosition);
+            }
+            if (gamepad2.crossWasPressed()) {
+                if (gateServoPosition == 0.0) {
+                    gateServoPosition = 0.4;
+                } else {
+                    gateServoPosition = 0.0;
+                }
+                gateServo.setPosition(gateServoPosition);
+            }
+            if (gamepad2.dpadRightWasPressed()) {
+                gateWaitTime += 0.025;
+            }
+            if (gamepad2.dpadLeftWasPressed()) {
+                gateWaitTime -= 0.025;
+            }
+            if (gateWaitTime < 0.0) {
+                gateWaitTime = 0.0;
+            }
+
+            if (gamepad2.dpadUpWasPressed()) {
+                launcherPower += 0.025;
+            }
+            if (gamepad2.dpadDownWasPressed()) {
+                launcherPower -= 0.025;
+            }
+            if (gamepad2.triangleWasPressed()) {
+                launcherPower = -launcherPower;
+            }
+
+            if (launcherPower < -1.0) {
+                launcherPower = -1.0;
+            } else if (launcherPower > 1.0) {
+                launcherPower = 1.0;
+            }
+            //DO SPINNY THING
+            if (toggleLauncher) {
+                launcherMotor.setPower(launcherPower);
+            } else {
+                launcherMotor.setPower(0.0);
+            }
             // Combine the joys//tick requests for each axis-motion to determine each wheel's power.
             // Set up a variable for each drive wheel to save the power level for telemetry.
-            double frontLeftPower  = axial + lateral + yaw;
+            double frontLeftPower = axial + lateral + yaw;
             double frontRightPower = axial - lateral - yaw;
-            double backLeftPower   = axial - lateral + yaw;
-            double backRightPower  = axial + lateral - yaw;
+            double backLeftPower = axial - lateral + yaw;
+            double backRightPower = axial + lateral - yaw;
 
             // Normalize the values so no wheel power exceeds 100%
             // This ensures that the robot maintains the desired motion.
@@ -182,18 +257,28 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
 
             //EMERGENCY STOP
             if (gamepad1.circleWasPressed()) {
+                emergencyStop = true;
+                intakeMotor.setPower(0.0);
+                launcherMotor.setPower(0.0);
+            }
+            if (emergencyStop) {
                 frontLeftDrive.setPower(0.0);
                 frontRightDrive.setPower(0.0);
                 backLeftDrive.setPower(0.0);
                 backRightDrive.setPower(0.0);
-                intakeMotor.setPower(0.0);
+            }
+            if (yaw < 0.05 && axial < 0.05 && lateral < 0.05) {
+                emergencyStop = false;
             }
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
             telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
+            telemetry.addData("Current Launcher Power", launcherPower);
+            telemetry.addData("Gate Wait Time", gateWaitTime);
             telemetry.update();
 
         }
-    }}
+    }
+}
