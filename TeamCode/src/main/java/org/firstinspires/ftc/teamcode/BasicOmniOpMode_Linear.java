@@ -80,8 +80,8 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
     private boolean toggleIntake = false;
     private double intakePower = -0.5;
     private boolean toggleLauncher = false;
-    private double launcherPower = 0.85;
-    private double gateWaitTime = 0.5;
+    private double launcherPower = 0.9;
+    private double gateWaitTime = 0.8;
     private int yawDirection = 0;
     private double gateServoPosition = 0.0;
     private boolean emergencyStop = false;
@@ -162,6 +162,10 @@ public class BasicOmniOpMode_Linear extends LinearOpMode {
             }
 
             if (gamepad2.squareWasPressed()) {
+                if (launcherPower < 0) {
+                    //Make not backwards. Good!!!!
+                    launcherPower = -launcherPower;
+                }
                 toggleLauncher = !toggleLauncher;
                 launcherTimer.reset();
                 if (toggleLauncher) {

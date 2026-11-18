@@ -113,7 +113,7 @@ public class RobotAutoDriveByTime_Linear extends LinearOpMode {
         frontLeftDrive.setPower(-0.15);
         frontRightDrive.setPower(-0.15);
         runtime.reset();
-        while (opModeIsActive() && (runtime.seconds() < 2.0)) {
+        while (opModeIsActive() && (runtime.seconds() < 1.25)) {
             telemetry.addData("Path", "Leg 1: %4.1f S Elapsed", runtime.seconds());
             telemetry.update();
 
@@ -124,7 +124,7 @@ public class RobotAutoDriveByTime_Linear extends LinearOpMode {
         backRightDrive.setPower(0.0);
         frontLeftDrive.setPower(0.0);
         frontRightDrive.setPower(0.0);
-        launcherMotor.setPower(0.875);
+        launcherMotor.setPower(0.9);
         intakeMotor.setPower(-0.5);
         while (opModeIsActive() && (runtime.seconds() < 0.5)) {
             telemetry.addData("WAIT", "thingy: %4.1f S Elapsed", runtime.seconds());
@@ -133,16 +133,21 @@ public class RobotAutoDriveByTime_Linear extends LinearOpMode {
         runtime.reset();
         backLeftDrive.setPower(0.0);
         frontLeftDrive.setPower(0.0);
-        for (int i = 0; i < 5; i++) {
-
-            while (opModeIsActive() && (runtime.seconds() < 0.2)) {
+        for (int i = 0; i < 7; i++) {
+            while (opModeIsActive() && (runtime.seconds() < 0.35)) {
                 telemetry.addData("Move Servo UP", "thingy: %4.1f S Elapsed", runtime.seconds());
                 telemetry.addData("Loops (i)", i);
                 telemetry.update();
                 gateServo.setPosition(0.35);
             }
             runtime.reset();
-
+            intakeMotor.setPower(0.5);
+            while (opModeIsActive() && (runtime.seconds() < 0.15)) {
+                telemetry.addData("Uhhhhhh", "thingy: %4.1f S Elapsed", runtime.seconds());
+                telemetry.addData("Loops (i)", i);
+            }
+            runtime.reset();
+            intakeMotor.setPower(-0.5);
             while (opModeIsActive() && (runtime.seconds() < 0.8)) {
                 telemetry.addData("Move Servo DOWN", "thingy: %4.1f S Elapsed", runtime.seconds());
                 telemetry.addData("Loops (i)", i);
@@ -153,10 +158,25 @@ public class RobotAutoDriveByTime_Linear extends LinearOpMode {
             runtime.reset();
         }
         runtime.reset();
-        launcherMotor.setPower(0.0);
+        //Go back to start
+        backLeftDrive.setPower(0.15);
+        backRightDrive.setPower(0.15);
+        frontLeftDrive.setPower(0.15);
+        frontRightDrive.setPower(0.15);
+        runtime.reset();
+        while (opModeIsActive() && (runtime.seconds() < 1.2)) {
+            telemetry.addData("Path", "Leg 1: %4.1f S Elapsed", runtime.seconds());
+            telemetry.update();
 
-        telemetry.addData("Path", "Complete");
-        telemetry.update();
+        }
+        runtime.reset();
+        //shoot
+        backLeftDrive.setPower(0.0);
+        backRightDrive.setPower(0.0);
+        frontLeftDrive.setPower(0.0);
+        frontRightDrive.setPower(0.0);
+        launcherMotor.setPower(0.0);
+        intakeMotor.setPower(0.0);
         sleep(1000);
     }
 }
